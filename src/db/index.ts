@@ -1,20 +1,15 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-const setup = () => {
-  if (!process.env.DATABASE_URL) {
-    console.error("DATABASE_URL is not set");
-    return {
-      select: () => ({
-        from: () => [],
-      }),
-    };
+// Googling says that a single drizzle instance is idiomatic.
+let db: ReturnType<typeof drizzle>;
+
+export const getDb = () => {
+  // for query purposes
+  if (!db) {
+    const queryClient = postgres(process.env.DATABASE_URL);
+    db = drizzle(queryClient);
   }
 
-  // for query purposes
-  const queryClient = postgres(process.env.DATABASE_URL);
-  const db = drizzle(queryClient);
   return db;
 };
-
-export default setup();

@@ -1,62 +1,72 @@
 "use client";
 
+import { Advocate } from "../types";
+
 import { useEffect, useState } from "react";
+import { PhoneNumber } from "./components/PhoneNumber";
 
 export default function Home() {
-  const [advocates, setAdvocates] = useState([]);
-  const [filteredAdvocates, setFilteredAdvocates] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [advocates, setAdvocates] = useState<Advocate[]>([]);
 
-  useEffect(() => {
-    console.log("fetching advocates...");
-    fetch("/api/advocates").then((response) => {
+  const fetchAdvocates = () => {
+    // No-op on the empty string, rather than
+    // clearing search results. I could see a case
+    // for clearing results here but this feels more intuitive
+    if (searchTerm.length === 0) {
+      return;
+    }
+    fetch(
+      "/api/advocates/search",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query: searchTerm
+        })
+      }
+    ).then((response) => {
       response.json().then((jsonResponse) => {
-        setAdvocates(jsonResponse.data);
-        setFilteredAdvocates(jsonResponse.data);
+        setAdvocates(jsonResponse.advocates);
       });
     });
+  }
+
+  useEffect(() => {
+    fetchAdvocates();
   }, []);
 
-  const onChange = (e) => {
-    const searchTerm = e.target.value;
-
-    document.getElementById("search-term").innerHTML = searchTerm;
-
-    console.log("filtering advocates...");
-    const filteredAdvocates = advocates.filter((advocate) => {
-      return (
-        advocate.firstName.includes(searchTerm) ||
-        advocate.lastName.includes(searchTerm) ||
-        advocate.city.includes(searchTerm) ||
-        advocate.degree.includes(searchTerm) ||
-        advocate.specialties.includes(searchTerm) ||
-        advocate.yearsOfExperience.includes(searchTerm)
-      );
-    });
-
-    setFilteredAdvocates(filteredAdvocates);
+  // I'm a little ambivalent about these tiny utility functions
+  // rather than just using lambdas. When there's only a few I think this is 
+  // more readable, but if the page grows in complexity it gets ugly
+  const onSearchClick = (e) => {
+    fetchAdvocates();
   };
 
-  const onClick = () => {
-    console.log(advocates);
-    setFilteredAdvocates(advocates);
+  const onSearchTermChange = (e) => {
+    setSearchTerm(e.target.value);
   };
+
+  const onSearchTermKeyDown = (e) => {
+    if (e.key === "Enter") {
+      fetchAdvocates();
+    }
+  }
 
   return (
-    <main style={{ margin: "24px" }}>
-      <h1>Solace Advocates</h1>
-      <br />
-      <br />
-      <div>
-        <p>Search</p>
-        <p>
-          Searching for: <span id="search-term"></span>
-        </p>
-        <input style={{ border: "1px solid black" }} onChange={onChange} />
-        <button onClick={onClick}>Reset Search</button>
+    <main>
+      <h1 className="title">Solace Advocates</h1>
+      <div className="search-section">
+        <p>Search for an advocate</p>
+        <input 
+          className="search-box"
+          onChange={onSearchTermChange} 
+          onKeyDown={onSearchTermKeyDown} />
+        <button className="search-button" onClick={onSearchClick}>Search</button>
       </div>
-      <br />
-      <br />
-      <table>
+      <table className="results-table">
         <thead>
           <th>First Name</th>
           <th>Last Name</th>
@@ -67,7 +77,7 @@ export default function Home() {
           <th>Phone Number</th>
         </thead>
         <tbody>
-          {filteredAdvocates.map((advocate) => {
+          {advocates.map((advocate) => {
             return (
               <tr>
                 <td>{advocate.firstName}</td>
@@ -80,12 +90,78 @@ export default function Home() {
                   ))}
                 </td>
                 <td>{advocate.yearsOfExperience}</td>
-                <td>{advocate.phoneNumber}</td>
+                <td><PhoneNumber phoneNumber={advocate.phoneNumber} /></td>
               </tr>
             );
           })}
         </tbody>
       </table>
+
+      {/* 
+      I will freely admit the design here is not 
+       */}
+      <style jsx>{`
+        .title {
+          text-align: center;
+          margin-bottom: 2rem;
+          font-size: 2.5rem;
+        }
+
+        .search-section {
+          text-align: center;
+        }
+
+        .search-section p {
+          margin-bottom: 1rem;
+        }
+
+        .search-box {
+          padding: .75rem;
+          margin-right: 0.75rem;
+          border: 1px solid black;
+          width: 350px;
+          font-size: 1rem;
+        }
+
+        .search-input:focus {
+          border-color: blue
+        }
+
+        .search-button {
+          background: green;
+          padding: 0.75rem;
+          color: white;
+          border: none;
+          border-radius: 6px;
+        }
+
+        .search-button:hover {
+          background: blue;
+        }
+
+        .results-table {
+          width: 100%;
+          margin-top: 1rem;
+          background: white;
+        }
+
+        .results-table th, 
+        .results-table td {
+          padding: 1rem;
+          text-align: left;
+          border-bottom: 1px solid whitesmoke;
+        }
+
+        .results-table th {
+          background:whitesmoke;
+          font-weight: 600;
+          color:black;
+        }
+
+        .results-table tr:last-child td {
+          border-bottom: none;
+        }
+      `}</style>
     </main>
   );
 }
